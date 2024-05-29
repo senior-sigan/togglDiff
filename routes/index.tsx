@@ -213,8 +213,10 @@ export default function TogglPage(props: PageProps<JoinedReports>) {
         <thead>
           <tr>
             <th>ID</th>
-            <th>Toggl {day.togglDuration}</th>
-            <th>Jira {day.jiraDuration}</th>
+            <th>Toggl</th>
+            <th>{day.togglDuration}</th>
+            <th>{day.jiraDuration}</th>
+            <th>Jira</th>
             <th>ID</th>
           </tr>
         </thead>
@@ -231,6 +233,8 @@ export default function TogglPage(props: PageProps<JoinedReports>) {
                   : ""}
               </td>
               <td style={{ width: "384px" }}>{report.toggl?.description}</td>
+              <td>{report.toggl?.duration ?? 0}</td>
+              <td>{report.jira?.duration ?? 0}</td>
               <td style={{ width: "384px" }}>
                 {report.jira?.description ?? <button>Create</button>}
               </td>
