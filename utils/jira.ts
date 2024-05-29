@@ -70,7 +70,6 @@ async function fetchIssueKeysPage(
     jql: `worklogDate >= "${fromDate}" and worklogDate < "${tillDate}"`,
   }).toString();
   const url = `https://${jiraOptions.host}/rest/api/3/search?${q}`;
-  console.log(`Processing page=${page} url="${url}"`);
   const resp = await fetch(url, {
     headers: {
       Accept: "application/json",

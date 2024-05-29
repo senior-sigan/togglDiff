@@ -1,5 +1,6 @@
 import { Handlers, PageProps } from "$fresh/server.ts";
 import { jiraCreds, jiraUsername, togglCreds, togglProject } from "../creds.ts";
+import { secondsToHms } from "../utils/duration.ts";
 import { fetchReports, JiraOptions, JiraReports } from "../utils/jira.ts";
 import { fetchTimeEntries, TimeEntries } from "../utils/toggl.ts";
 
@@ -199,31 +200,37 @@ type JoinedReports = Awaited<ReturnType<typeof getJoinedReports>>;
 
 export const handler: Handlers<JoinedReports> = {
   async GET(_req, ctx) {
-    const joined = await getJoinedReports("2024-03-01", "2024-05-01");
+    const joined = await getJoinedReports("2024-04-01", "2024-04-15");
     return ctx.render(joined);
   },
 };
 
+function renderTime(duration: number | undefined) {
+  if (duration) {
+    return secondsToHms(duration);
+  }
+  return "";
+}
+
 export default function TogglPage(props: PageProps<JoinedReports>) {
-  console.log(props.data);
   return props.data.map((day) => (
     <div>
-      <h1>{day.date}</h1>
+      <h3>{day.date}</h3>
       <table>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Toggl</th>
-            <th>{day.togglDuration}</th>
-            <th>{day.jiraDuration}</th>
-            <th>Jira</th>
-            <th>ID</th>
+            <th style={{ width: "10%" }}>ID</th>
+            <th style={{ width: "30%" }}>Toggl</th>
+            <th style={{ width: "10%" }}>{renderTime(day.togglDuration)}</th>
+            <th style={{ width: "10%" }}>{renderTime(day.jiraDuration)}</th>
+            <th style={{ width: "30%" }}>Jira</th>
+            <th style={{ width: "10%" }}>ID</th>
           </tr>
         </thead>
         <tbody>
           {day.reports.map((report) => (
             <tr>
-              <td style={{ width: "128px" }}>
+              <td>
                 {report.toggl?.jiraLink
                   ? (
                     <a target="_blank" href={report.toggl?.jiraLink?.link}>
@@ -232,13 +239,13 @@ export default function TogglPage(props: PageProps<JoinedReports>) {
                   )
                   : ""}
               </td>
-              <td style={{ width: "384px" }}>{report.toggl?.description}</td>
-              <td>{report.toggl?.duration ?? 0}</td>
-              <td>{report.jira?.duration ?? 0}</td>
-              <td style={{ width: "384px" }}>
+              <td>{report.toggl?.description}</td>
+              <td>{renderTime(report.toggl?.duration ?? 0)}</td>
+              <td>{renderTime(report.jira?.duration ?? 0)}</td>
+              <td>
                 {report.jira?.description ?? <button>Create</button>}
               </td>
-              <td style={{ width: "128px" }}>
+              <td>
                 {report.jira?.jiraLink
                   ? (
                     <a target="_blank" href={report.jira?.jiraLink?.link}>
