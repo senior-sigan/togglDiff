@@ -123,7 +123,8 @@ async function fetchWorkload(
   tillDate: string,
   jiraOptions: JiraOptions,
 ) {
-  const url = `https://${jiraOptions.host}/rest/api/3/issue/${issueKey}/worklog`;
+  const url =
+    `https://${jiraOptions.host}/rest/api/3/issue/${issueKey}/worklog`;
   const resp = await fetch(url, {
     headers: {
       Accept: "application/json",
@@ -132,7 +133,9 @@ async function fetchWorkload(
   });
   if (!resp.ok) {
     const text = await resp.text();
-    throw new Error(`Failed to get worklog: status=${resp.statusText} body="${text}"`);
+    throw new Error(
+      `Failed to get worklog: status=${resp.statusText} body="${text}"`,
+    );
   }
 
   const rawData = await resp.json();
@@ -158,10 +161,10 @@ export async function fetchReports(
   const keys = await fetchIssueKeys(fromDate, tillDate, jiraOptions);
 
   const jobs = keys.map((key) =>
-    fetchWorkload(key, fromDate, tillDate, jiraOptions),
+    fetchWorkload(key, fromDate, tillDate, jiraOptions)
   );
   const results = (await Promise.all(jobs)).flatMap((el) => el);
   return results;
 }
 
-export type JiraReports = Awaited<ReturnType<typeof fetchReports>>
+export type JiraReports = Awaited<ReturnType<typeof fetchReports>>;
