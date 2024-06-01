@@ -1,20 +1,73 @@
 import { Handlers } from "$fresh/server.ts";
+import { getCookies, setCookie } from "$std/http/cookie.ts";
+import { error } from "$fresh/src/dev/error.ts";
+import { useCSP } from "$fresh/runtime.ts";
+
+function cookieAdder(headers: Headers, domain: string) {
+  return (name: string, value: string) => {
+    setCookie(headers, {
+      name,
+      value,
+      domain,
+      maxAge: 2592000,
+      sameSite: "Lax", // prevents CSRF attacks
+      path: "/",
+      secure: true,
+    });
+  };
+}
+
+function extractCokies(headers: Headers) {
+  const cookies = getCookies(headers);
+  const { jiraHost, jiraToken, togglToken } = cookies;
+  return { jiraHost, jiraToken, togglToken };
+}
 
 export const handler: Handlers = {
   async GET(req, ctx) {
-    // TODO: check cookies and data and redirect to /app
+    const userData = extractCokies(req.headers);
+    console.log(userData);
+    if (userData.jiraHost && userData.jiraToken && userData.togglToken) {
+      const headers = new Headers();
+      headers.set("location", "/app");
+      return new Response(null, {
+        status: 303, // See Other
+        headers,
+      });
+    }
     return await ctx.render();
   },
   async POST(req, ctx) {
     const form = await req.formData();
-    const jiraHost = form.get("jiraHost")?.toString();
-    const jiraToken = form.get("jiraToken")?.toString();
-    const togglToken = form.get("togglToken")?.toString();
+    const jiraHost = form.get("jiraHost")?.toString() ?? "";
+    const jiraToken = form.get("jiraToken")?.toString() ?? "";
+    const togglToken = form.get("togglToken")?.toString() ?? "";
     console.log({ jiraHost, jiraToken, togglToken });
-    // TODO: validate data
 
-    // Redirect user to thank you page.
+    const errors = [];
+    if (!jiraHost) {
+      errors.push({ field: "jiraHost", message: "should not be empty" });
+    }
+    if (!jiraToken) {
+      errors.push({ field: "jiraToken", message: "should not be empty" });
+    }
+    if (!togglToken) {
+      errors.push({ field: "togglToken", message: "should not be empty" });
+    }
+    if (errors.length > 0) {
+      console.log(errors);
+      return await ctx.render(errors, {
+        status: 400,
+      });
+    }
+
     const headers = new Headers();
+    const url = new URL(req.url);
+    const addCookie = cookieAdder(headers, url.hostname);
+    addCookie("jiraHost", jiraHost);
+    addCookie("jiraToken", jiraToken);
+    addCookie("togglToken", togglToken);
+
     headers.set("location", "/app");
     return new Response(null, {
       status: 303, // See Other
