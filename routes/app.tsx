@@ -1,22 +1,37 @@
 import { Handlers, PageProps } from "$fresh/server.ts";
-import { jiraCreds, jiraUsername, togglCreds, togglProject } from "../creds.ts";
 import { secondsToHms } from "../utils/duration.ts";
-import { fetchReports, JiraOptions, JiraReports } from "../utils/jira.ts";
-import { fetchTimeEntries, TimeEntries } from "../utils/toggl.ts";
+import {
+  fetchMyself,
+  fetchReports,
+  JiraOptions,
+  JiraReports,
+} from "../utils/jira.ts";
+import { fetchTimeEntries, TimeEntries, TogglOptions } from "../utils/toggl.ts";
+import { State } from "./_middleware.ts";
 
-async function myJiraReports(fromDate: string, tillDate: string) {
-  const reports = await fetchReports(fromDate, tillDate, jiraCreds);
-  return reports.filter((report) => report.name == jiraUsername);
+async function myJiraReports(
+  fromDate: string,
+  tillDate: string,
+  options: JiraOptions,
+) {
+  const [me, reports] = await Promise.all([
+    fetchMyself(options),
+    fetchReports(fromDate, tillDate, options),
+  ]);
+  return reports.filter((report) => report.name == me.displayName);
 }
 
-async function projectToggleEntries(fromDate: string, tillDate: string) {
+async function projectToggleEntries(
+  fromDate: string,
+  tillDate: string,
+  options: TogglOptions,
+) {
   const entries = await fetchTimeEntries(
-    togglCreds.username,
-    togglCreds.token,
     fromDate,
     tillDate,
+    options.token,
   );
-  return entries.filter((entry) => entry.project_name === togglProject);
+  return entries.filter((entry) => entry.project_name === options.project);
 }
 
 function dateTimeToDate(dateTime: string) {
@@ -60,10 +75,7 @@ function align<T>({
 interface ReportEntry {
   description: string;
   duration: number;
-  jiraLink?: {
-    name: string;
-    link: string;
-  };
+  taskID: string | undefined;
 }
 
 function groupByText(reports: ReportEntry[]) {
@@ -127,7 +139,7 @@ function joinReports(jiraEntries: JiraReports, togglEntries: TimeEntries) {
     const entry = {
       duration: togglEntry.duration,
       description,
-      jiraLink: buildJiraLink(jiraCreds.host, id),
+      taskID: id,
     };
     if (value) {
       value.toggl.push(entry);
@@ -144,7 +156,7 @@ function joinReports(jiraEntries: JiraReports, togglEntries: TimeEntries) {
     const entry = {
       duration: jiraEntry.timeSeconds,
       description: jiraEntry.comment,
-      jiraLink: buildJiraLink(jiraCreds.host, jiraEntry.issueKey),
+      taskID: jiraEntry.issueKey,
     };
     if (value) {
       value.jira.push(entry);
@@ -174,10 +186,15 @@ function alignReports(reports: Reports) {
   }));
 }
 
-async function getJoinedReports(startDate: string, endDate: string) {
+async function getJoinedReports(
+  startDate: string,
+  endDate: string,
+  jiraOptions: JiraOptions,
+  togglOptions: TogglOptions,
+) {
   const [togglEntries, jiraEntries] = await Promise.all([
-    projectToggleEntries(startDate, endDate),
-    myJiraReports(startDate, endDate),
+    projectToggleEntries(startDate, endDate, togglOptions),
+    myJiraReports(startDate, endDate, jiraOptions),
   ]);
 
   const reports = joinReports(jiraEntries, togglEntries);
@@ -198,10 +215,39 @@ async function getJoinedReports(startDate: string, endDate: string) {
 
 type JoinedReports = Awaited<ReturnType<typeof getJoinedReports>>;
 
-export const handler: Handlers<JoinedReports> = {
-  async GET(_req, ctx) {
-    const joined = await getJoinedReports("2024-04-01", "2024-04-15");
-    return ctx.render(joined);
+interface Props {
+  reports: JoinedReports;
+  startDate: string;
+  endDate: string;
+}
+
+function getDateString(monthOffset: number = 0) {
+  const date = new Date();
+  date.setMonth(date.getMonth() + monthOffset);
+  return date.toISOString().slice(0, 10);
+}
+
+export const handler: Handlers<Props, State> = {
+  async GET(req, ctx) {
+    const url = new URL(req.url);
+    const startDate = url.searchParams.get("start") || getDateString(-1);
+    const endDate = url.searchParams.get("end") || getDateString();
+
+    const userData = ctx.state.userData;
+    if (!userData) {
+      return ctx.renderNotFound();
+    }
+    const reports = await getJoinedReports(
+      startDate,
+      endDate,
+      userData.jira,
+      userData.toggl,
+    );
+    return ctx.render({
+      endDate: endDate,
+      startDate: startDate,
+      reports: reports,
+    });
   },
 };
 
@@ -212,45 +258,51 @@ function renderTime(duration: number | undefined) {
   return "";
 }
 
-export default function TogglPage(props: PageProps<JoinedReports>) {
+export default function TogglPage(props: PageProps<Props>) {
   // TODO: if no cookies - redirect to /
-  return props.data.map((day) => (
+  const table = props.data.reports.map((day) => (
     <div>
       <h3>{day.date}</h3>
       <table>
         <thead>
           <tr>
-            <th style={{ width: "10%" }}>ID</th>
-            <th style={{ width: "30%" }}>Toggl</th>
-            <th style={{ width: "10%" }}>{renderTime(day.togglDuration)}</th>
-            <th style={{ width: "10%" }}>{renderTime(day.jiraDuration)}</th>
-            <th style={{ width: "30%" }}>Jira</th>
-            <th style={{ width: "10%" }}>ID</th>
+            <th>ID</th>
+            <th>Toggl</th>
+            <th>{renderTime(day.togglDuration)}</th>
+            <th>{renderTime(day.jiraDuration)}</th>
+            <th>Jira</th>
+            <th>ID</th>
           </tr>
         </thead>
         <tbody>
           {day.reports.map((report) => (
             <tr>
-              <td>
-                {report.toggl?.jiraLink
+              <td style={{ width: "10%" }}>
+                {report.toggl?.taskID
                   ? (
-                    <a target="_blank" href={report.toggl?.jiraLink?.link}>
-                      {report.toggl?.jiraLink?.name}
+                    <a target="_blank" href="#">
+                      {report.toggl?.taskID}
                     </a>
                   )
                   : ""}
               </td>
-              <td>{report.toggl?.description}</td>
-              <td>{renderTime(report.toggl?.duration ?? 0)}</td>
-              <td>{renderTime(report.jira?.duration ?? 0)}</td>
-              <td>
+              <td style={{ width: "30%" }}>
+                {report.toggl?.description}
+              </td>
+              <td style={{ width: "10%" }}>
+                {renderTime(report.toggl?.duration ?? 0)}
+              </td>
+              <td style={{ width: "10%" }}>
+                {renderTime(report.jira?.duration ?? 0)}
+              </td>
+              <td style={{ width: "30%" }}>
                 {report.jira?.description ?? <button>Create</button>}
               </td>
-              <td>
-                {report.jira?.jiraLink
+              <td style={{ width: "10%" }}>
+                {report.jira?.taskID
                   ? (
-                    <a target="_blank" href={report.jira?.jiraLink?.link}>
-                      {report.jira?.jiraLink?.name}
+                    <a target="_blank" href="#">
+                      {report.jira?.taskID}
                     </a>
                   )
                   : ""}
@@ -261,4 +313,11 @@ export default function TogglPage(props: PageProps<JoinedReports>) {
       </table>
     </div>
   ));
+
+  return (
+    <div>
+      <h1>Reports {props.data.startDate} ... {props.data.endDate}</h1>
+      {table}
+    </div>
+  );
 }

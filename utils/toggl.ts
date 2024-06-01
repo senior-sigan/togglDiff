@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { basicAuth } from "./auth.ts";
 
+const TOGGL_USER = "api_token";
 const baseURL = "https://api.track.toggl.com/api/v9/me/time_entries";
+
+export interface TogglOptions {
+  token: string;
+  project: string;
+}
 
 export const TimeEntry = z.object({
   id: z.number(),
@@ -19,10 +25,9 @@ export const TimeEntries = z.array(TimeEntry);
 export type TimeEntries = z.infer<typeof TimeEntries>;
 
 export async function fetchTimeEntries(
-  user: string,
-  password: string,
   startDate: string,
   endDate: string,
+  token: string,
 ) {
   const q = new URLSearchParams({
     start_date: startDate,
@@ -34,7 +39,7 @@ export async function fetchTimeEntries(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": basicAuth(user, password),
+      "Authorization": basicAuth(token, TOGGL_USER),
     },
   });
   if (res.ok) {

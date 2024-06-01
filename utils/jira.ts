@@ -12,7 +12,7 @@ const SearchResponse = z.object({
     z.object({
       key: z.string(),
     }),
-  ),
+  ).default([]),
 });
 
 const baseContentSchema = z.object({
@@ -42,6 +42,11 @@ const WorklogResponse = z.object({
       comment: ContentSchema.optional(),
     }),
   ),
+});
+
+const MyselfResponse = z.object({
+  displayName: z.string(),
+  emailAddress: z.string(),
 });
 
 function flattenContent(content: Content | undefined): string {
@@ -146,7 +151,7 @@ async function fetchWorkload(
     .filter((wl) => wl.started >= fromDate && wl.started < tillDate)
     .map((wl) => ({
       issueKey: issueKey,
-      name: wl.author.displayName.toLowerCase().trim(),
+      name: wl.author.displayName.trim(),
       timeSeconds: wl.timeSpentSeconds,
       time: wl.timeSpent,
       started: wl.started.substring(0, 10),
@@ -166,6 +171,19 @@ export async function fetchReports(
   );
   const results = (await Promise.all(jobs)).flatMap((el) => el);
   return results;
+}
+
+export async function fetchMyself(jiraOptions: JiraOptions) {
+  const url = new URL("/rest/api/3/myself", jiraOptions.host);
+  const resp = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      Authorization: basicAuth(jiraOptions.username, jiraOptions.token),
+    },
+  });
+  const rawData = await resp.json();
+  const data = MyselfResponse.parse(rawData);
+  return data;
 }
 
 export type JiraReports = Awaited<ReturnType<typeof fetchReports>>;

@@ -1,7 +1,13 @@
 import { Handlers } from "$fresh/server.ts";
-import { getCookies, setCookie } from "$std/http/cookie.ts";
-import { error } from "$fresh/src/dev/error.ts";
-import { useCSP } from "$fresh/runtime.ts";
+import { setCookie } from "$std/http/cookie.ts";
+import { State } from "./_middleware.ts";
+
+function normalizeBaseURL(base: string) {
+  if (base.startsWith("https://") || base.startsWith("http://")) {
+    return base;
+  }
+  return `https://${base}`;
+}
 
 function cookieAdder(headers: Headers, domain: string) {
   return (name: string, value: string) => {
@@ -17,23 +23,10 @@ function cookieAdder(headers: Headers, domain: string) {
   };
 }
 
-function extractCokies(headers: Headers) {
-  const cookies = getCookies(headers);
-  const { jiraHost, jiraToken, togglToken } = cookies;
-  return { jiraHost, jiraToken, togglToken };
-}
-
-function normalizeBaseURL(base: string) {
-  if (base.startsWith("https://") || base.startsWith("http://")) {
-    return base;
-  }
-  return `https://${base}`;
-}
-
-export const handler: Handlers = {
+export const handler: Handlers<unknown, State> = {
   async GET(req, ctx) {
-    const userData = extractCokies(req.headers);
-    if (userData.jiraHost && userData.jiraToken && userData.togglToken) {
+    const userData = ctx.state.userData;
+    if (userData) {
       const headers = new Headers();
       headers.set("location", "/app");
       return new Response(null, {
@@ -46,19 +39,26 @@ export const handler: Handlers = {
   async POST(req, ctx) {
     const form = await req.formData();
     const jiraHost = form.get("jiraHost")?.toString() ?? "";
+    const jiraUser = form.get("jiraUser")?.toString() ?? "";
     const jiraToken = form.get("jiraToken")?.toString() ?? "";
+    const togglProject = form.get("togglProject")?.toString() ?? "";
     const togglToken = form.get("togglToken")?.toString() ?? "";
-    console.log({ jiraHost, jiraToken, togglToken });
 
     const errors = [];
     if (!jiraHost) {
       errors.push({ field: "jiraHost", message: "should not be empty" });
+    }
+    if (!jiraUser) {
+      errors.push({ field: "jiraUser", message: "should not be empty" });
     }
     if (!jiraToken) {
       errors.push({ field: "jiraToken", message: "should not be empty" });
     }
     if (!togglToken) {
       errors.push({ field: "togglToken", message: "should not be empty" });
+    }
+    if (!togglProject) {
+      errors.push({ field: "togglProject", message: "should not be empty" });
     }
     if (errors.length > 0) {
       console.log(errors);
@@ -71,8 +71,10 @@ export const handler: Handlers = {
     const url = new URL(req.url);
     const addCookie = cookieAdder(headers, url.hostname);
     addCookie("jiraHost", normalizeBaseURL(jiraHost));
+    addCookie("jiraUser", jiraUser);
     addCookie("jiraToken", jiraToken);
     addCookie("togglToken", togglToken);
+    addCookie("togglProject", togglProject);
 
     headers.set("location", "/app");
     return new Response(null, {
@@ -97,11 +99,17 @@ export default function RegisterPage() {
         >
         </input>
 
+        <label for="jiraUser">Jira Email</label>
+        <input id="jiraUser" name="jiraUser" type="text"></input>
+
         <label for="jiraToken">Jira Token</label>
         <input id="jiraToken" name="jiraToken" type="text"></input>
 
         <label for="togglToken">Toggl Token</label>
         <input id="togglToken" name="togglToken" type="text"></input>
+
+        <label for="togglProject">Toggl Project</label>
+        <input id="togglProject" name="togglProject" type="text"></input>
 
         <button type="submit">Let me in!!!</button>
       </form>
