@@ -23,10 +23,16 @@ function extractCokies(headers: Headers) {
   return { jiraHost, jiraToken, togglToken };
 }
 
+function normalizeBaseURL(base: string) {
+  if (base.startsWith("https://") || base.startsWith("http://")) {
+    return base;
+  }
+  return `https://${base}`;
+}
+
 export const handler: Handlers = {
   async GET(req, ctx) {
     const userData = extractCokies(req.headers);
-    console.log(userData);
     if (userData.jiraHost && userData.jiraToken && userData.togglToken) {
       const headers = new Headers();
       headers.set("location", "/app");
@@ -64,7 +70,7 @@ export const handler: Handlers = {
     const headers = new Headers();
     const url = new URL(req.url);
     const addCookie = cookieAdder(headers, url.hostname);
-    addCookie("jiraHost", jiraHost);
+    addCookie("jiraHost", normalizeBaseURL(jiraHost));
     addCookie("jiraToken", jiraToken);
     addCookie("togglToken", togglToken);
 

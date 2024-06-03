@@ -69,7 +69,7 @@ async function fetchIssueKeysPage(
     startAt: `${page}`,
     jql: `worklogDate >= "${fromDate}" and worklogDate < "${tillDate}"`,
   }).toString();
-  const url = `https://${jiraOptions.host}/rest/api/3/search?${q}`;
+  const url = new URL(`/rest/api/3/search?${q}`, jiraOptions.host);
   const resp = await fetch(url, {
     headers: {
       Accept: "application/json",
@@ -122,8 +122,10 @@ async function fetchWorkload(
   tillDate: string,
   jiraOptions: JiraOptions,
 ) {
-  const url =
-    `https://${jiraOptions.host}/rest/api/3/issue/${issueKey}/worklog`;
+  const url = new URL(
+    `/rest/api/3/issue/${issueKey}/worklog`,
+    jiraOptions.host,
+  );
   const resp = await fetch(url, {
     headers: {
       Accept: "application/json",
