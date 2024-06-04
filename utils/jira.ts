@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { basicAuth } from "./auth.ts";
+import { format } from "@std/datetime/format";
 
 export interface JiraOptions {
   host: string;
@@ -184,6 +185,52 @@ export async function fetchMyself(jiraOptions: JiraOptions) {
   const rawData = await resp.json();
   const data = MyselfResponse.parse(rawData);
   return data;
+}
+
+function jiraDateForamt(date: string) {
+  const dt = new Date(date);
+  // "2021-01-17T12:34:00.000+0000";
+  return format(dt, "yyyy-MM-dd'T'HH:mm:ss.SSS+0000", { utc: true });
+}
+
+export async function submitWorklog(worklog: {
+  issueIdOrKey: string;
+  text: string;
+  timeSpentSeconds: number;
+  started: string;
+}, jiraOptions: JiraOptions) {
+  const data = {
+    comment: {
+      content: [{
+        content: [{ text: worklog.text, type: "text" }],
+        type: "paragraph",
+      }],
+      type: "doc",
+      version: 1,
+    },
+    started: jiraDateForamt(worklog.started),
+    timeSpentSeconds: worklog.timeSpentSeconds,
+  };
+
+  const url = new URL(
+    `/rest/api/3/issue/${worklog.issueIdOrKey}/worklog`,
+    jiraOptions.host,
+  );
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: basicAuth(jiraOptions.username, jiraOptions.token),
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    console.error(txt);
+    throw new Error(txt);
+  }
+  return resp.json();
 }
 
 export type JiraReports = Awaited<ReturnType<typeof fetchReports>>;

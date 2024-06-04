@@ -5,9 +5,10 @@
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
 import * as $_middleware from "./routes/_middleware.ts";
+import * as $api_jira from "./routes/api/jira.ts";
 import * as $app from "./routes/app.tsx";
 import * as $index from "./routes/index.tsx";
-
+import * as $jiraslot from "./islands/jiraslot.tsx";
 import { type Manifest } from "$fresh/server.ts";
 
 const manifest = {
@@ -15,10 +16,13 @@ const manifest = {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
     "./routes/_middleware.ts": $_middleware,
+    "./routes/api/jira.ts": $api_jira,
     "./routes/app.tsx": $app,
     "./routes/index.tsx": $index,
   },
-  islands: {},
+  islands: {
+    "./islands/jiraslot.tsx": $jiraslot,
+  },
   baseUrl: import.meta.url,
 } satisfies Manifest;
 

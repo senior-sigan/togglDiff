@@ -22,11 +22,12 @@
   ],
   "imports": {
     "$fresh/": "https://deno.land/x/fresh@1.6.8/",
-    "preact": "https://esm.sh/preact@10.19.6",
-    "preact/": "https://esm.sh/preact@10.19.6/",
+    "$std/": "https://deno.land/std@0.216.0/",
     "@preact/signals": "https://esm.sh/*@preact/signals@1.2.2",
     "@preact/signals-core": "https://esm.sh/*@preact/signals-core@1.5.1",
-    "$std/": "https://deno.land/std@0.216.0/",
+    "@std/datetime": "jsr:@std/datetime@^0.224.0",
+    "preact": "https://esm.sh/preact@10.19.6",
+    "preact/": "https://esm.sh/preact@10.19.6/",
     "zod": "https://deno.land/x/zod@v3.16.1/mod.ts"
   },
   "compilerOptions": {

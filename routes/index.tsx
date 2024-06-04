@@ -61,7 +61,7 @@ export const handler: Handlers<unknown, State> = {
       errors.push({ field: "togglProject", message: "should not be empty" });
     }
     if (errors.length > 0) {
-      console.log(errors);
+      console.error(errors);
       return await ctx.render(errors, {
         status: 400,
       });
