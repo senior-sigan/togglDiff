@@ -1,4 +1,3 @@
-import { date } from "zod";
 import { ReportEntry, ReportPreview } from "../utils/models.ts";
 
 import { useSignal } from "@preact/signals";
@@ -34,6 +33,7 @@ export default function JiraSlot(props: Props) {
       status.value = "loading";
       try {
         const res = await submitJiraEntry(report);
+        console.log(res); // TODO: check status??
         jiraData.value = report;
         status.value = "done";
       } catch (err) {

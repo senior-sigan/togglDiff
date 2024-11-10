@@ -190,7 +190,7 @@ export async function fetchMyself(jiraOptions: JiraOptions) {
 function jiraDateForamt(date: string) {
   const dt = new Date(date);
   // "2021-01-17T12:34:00.000+0000";
-  return format(dt, "yyyy-MM-dd'T'HH:mm:ss.SSS+0000", { utc: true });
+  return format(dt, "yyyy-MM-dd'T'HH:mm:ss.SSS+0000", { timeZone: "UTC" });
 }
 
 export async function submitWorklog(worklog: {

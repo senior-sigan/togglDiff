@@ -9,7 +9,7 @@ import * as $api_jira from "./routes/api/jira.ts";
 import * as $app from "./routes/app.tsx";
 import * as $index from "./routes/index.tsx";
 import * as $jiraslot from "./islands/jiraslot.tsx";
-import { type Manifest } from "$fresh/server.ts";
+import type { Manifest } from "$fresh/server.ts";
 
 const manifest = {
   routes: {

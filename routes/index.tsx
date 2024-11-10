@@ -24,7 +24,7 @@ function cookieAdder(headers: Headers, domain: string) {
 }
 
 export const handler: Handlers<unknown, State> = {
-  async GET(req, ctx) {
+  async GET(_req, ctx) {
     const userData = ctx.state.userData;
     if (userData) {
       const headers = new Headers();
